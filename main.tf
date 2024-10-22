@@ -4,7 +4,8 @@ provider "aws" {
 
 # Incluir módulo para Lambda functions
 module "lambda" {
-  source = "./modules/lambda"
+  source        = "./modules/lambda"
+  lambda_bucket = module.s3.lambda_bucket_name  # Pasar el bucket del módulo S3
 }
 
 # Incluir módulo para S3 buckets
