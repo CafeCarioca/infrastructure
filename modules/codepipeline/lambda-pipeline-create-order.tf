@@ -36,9 +36,9 @@ resource "aws_codepipeline" "lambda-pipeline-create-order" {
       input_artifacts  = ["source_output"]
 
       configuration = {
-        FunctionName = aws_lambda_function.lambda_function1.function_name
+        FunctionName = aws_lambda_function.create-order.function_name
         S3Bucket     = var.lambda_bucket
-        S3Key        = "lambda-function1.zip"
+        S3Key        = "create-order.zip"
       }
     }
   }
