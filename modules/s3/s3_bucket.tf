@@ -9,3 +9,6 @@ resource "aws_s3_bucket_versioning" "lambda_bucket_versioning" {
     status = "Enabled"
   }
 }
+
+
+# Falta agregarle una policy para que la lambda pueda leer
