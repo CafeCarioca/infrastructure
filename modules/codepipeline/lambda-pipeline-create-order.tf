@@ -1,29 +1,7 @@
-resource "aws_codepipeline" "lambda-pipeline-create-order" {
-  name = "lambda-pipeline-create-order"
+resource "aws_codepipeline" "lambda_pipeline_create_order" {
+  name = "lambda_pipeline_create_order"
   
-  artifact_store {
-    location = var.pipeline_bucket
-    type     = "S3"
-  }
-
-  stage {
-    name = "Source"
-    action {
-      name             = "Source"
-      category         = "Source"
-      owner            = "ThirdParty"
-      provider         = "GitHub"
-      version          = "1"
-      output_artifacts = ["source_output"]
-
-      configuration = {
-        Owner      = var.github_owner
-        Repo       = var.github_repo
-        Branch     = var.github_branch
-        OAuthToken = var.github_token
-      }
-    }
-  }
+  # Otros bloques de configuración...
 
   stage {
     name = "Deploy"
@@ -36,7 +14,7 @@ resource "aws_codepipeline" "lambda-pipeline-create-order" {
       input_artifacts  = ["source_output"]
 
       configuration = {
-        FunctionName = aws_lambda_function.create-order.function_name
+        FunctionName = module.lambda.create_order_function_name  # Referenciar el output del módulo Lambda
         S3Bucket     = "carioca-lambda-code-bucket"
         S3Key        = "create-order.zip"
       }
