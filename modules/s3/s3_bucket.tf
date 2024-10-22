@@ -1,5 +1,5 @@
-resource "aws_s3_bucket" "lambda_bucket" {
-  bucket        = "my-lambda-code-bucket"
+resource "aws_s3_bucket" "lambda_bucket_name" {
+  bucket        = "carioca-lambda-code-bucket"
   force_destroy = true
 }
 
