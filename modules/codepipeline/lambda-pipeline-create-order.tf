@@ -37,7 +37,7 @@ resource "aws_codepipeline" "lambda-pipeline-create-order" {
 
       configuration = {
         FunctionName = aws_lambda_function.create-order.function_name
-        S3Bucket     = var.lambda_bucket
+        S3Bucket     = "carioca-lambda-code-bucket"
         S3Key        = "create-order.zip"
       }
     }
