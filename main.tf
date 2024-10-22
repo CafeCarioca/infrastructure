@@ -15,8 +15,3 @@ output "create_order_lambda_function_name" {
 module "s3" {
   source = "./modules/s3"
 }
-
-# Incluir módulo para CodePipeline
-module "pipeline" {
-  source = "./modules/codepipeline"
-}
