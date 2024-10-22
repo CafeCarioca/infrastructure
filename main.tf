@@ -20,4 +20,3 @@ module "s3" {
 module "pipeline" {
   source = "./modules/codepipeline"
 }
-
