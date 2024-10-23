@@ -60,10 +60,10 @@ resource "aws_s3_bucket_policy" "carioca_front_policy" {
     Id      = "Policy1729635311597"
     Statement = [
       {
-        Sid      = "Stmt1729635307903"
+        Sid      = "AddPerm"
         Effect   = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::892205733758:role/LabRole"
+          "AWS": "*"
         }
         Action   = "s3:GetObject"
         Resource = "arn:aws:s3:::carioca-front-bucket/*"
