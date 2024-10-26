@@ -1,21 +1,24 @@
 variable "aws_region" {
-  description = "La región de AWS donde se desplegarán los recursos."
-  default     = "us-east-1"
+  description = "La región de AWS donde se desplegará la infraestructura"
+  default     = "us-east-1"  # Puedes cambiarlo según tus necesidades
 }
 
-variable "lambda_role" {
-  description = "El ARN del rol IAM para las funciones Lambda."
-  type        = string
+variable "cognito_user_pool_name" {
+  description = "Nombre del User Pool de Cognito"
+  default     = "CariocaUserPool"
 }
 
-variable "s3_bucket_lambda" {
-  description = "El nombre del bucket S3 para el código Lambda."
-  type        = string
+variable "s3_bucket_lambda_code" {
+  description = "Nombre del bucket para el código de las Lambdas"
   default     = "carioca-lambda-code-bucket"
 }
 
-variable "s3_bucket_front" {
-  description = "El nombre del bucket S3 para el frontend."
-  type        = string
+variable "s3_bucket_frontend" {
+  description = "Nombre del bucket para el frontend"
   default     = "carioca-front-bucket"
+}
+
+variable "sns_topic_name" {
+  description = "Nombre del topic de SNS"
+  default     = "CariocaOrderUpdates"
 }
