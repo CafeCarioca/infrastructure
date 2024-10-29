@@ -13,3 +13,7 @@ output "cognito_user_pool_id" {
 output "sns_topic_arn" {
   value = aws_sns_topic.carioca_order_updates.arn
 }
+
+output "sns_topic_arn" {
+  value = module.sns.carioca_order_updates_arn  # Cambia esto si es necesario
+}

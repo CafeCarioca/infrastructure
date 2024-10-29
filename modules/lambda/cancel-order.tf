@@ -3,14 +3,14 @@ resource "aws_lambda_function" "cancel_order" {
   handler       = "cancel_order.handler"  # Asegúrate de que este coincida con tu código
   runtime       = "python3.8"  # Cambia según tu versión de Python
 
-  s3_bucket = aws_s3_bucket.lambda_bucket.id
+  s3_bucket = "carioca-lambda-code-bucket"  # Cambia esto al nombre de tu bucket
   s3_key    = "path/to/your/cancel_order.zip"  # Cambia a la ubicación de tu archivo zip
 
   environment {
     SNS_TOPIC_ARN = aws_sns_topic.carioca_order_updates.arn
   }
 
-  role = aws_iam_role.lambda_exec.arn  # Asegúrate de que esta función tenga los permisos adecuados
+  role = aws_iam_role.lambda_exec.arn  # Referencia al rol IAM creado
 }
 
 resource "aws_api_gateway_resource" "cancel_order" {

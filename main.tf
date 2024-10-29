@@ -1,14 +1,17 @@
-
-# Incluir módulo para Lambda functions
 module "lambda" {
-  source        = "./modules/lambda"
-  }
+  source = "./modules/lambda"
 
-output "create_order_lambda_function_name" {
-  value = module.lambda.create_order_function_name
+  # Pasa el ARN del rol como variable
+  lambda_exec_role_arn = aws_iam_role.lambda_exec.arn
 }
 
-# Incluir módulo para S3 buckets
-module "s3" {
-  source = "./modules/s3"
+# En el módulo Lambda (variables.tf)
+variable "lambda_exec_role_arn" {
+  description = "ARN del rol de ejecución para Lambda"
+  type        = string
+}
+
+# Usarlo en el módulo Lambda (en cancel-order.tf o donde corresponda)
+resource "aws_lambda_function" "cancel_order" {
+  role = var.lambda_exec_role_arn
 }
