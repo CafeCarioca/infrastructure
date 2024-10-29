@@ -1,6 +1,3 @@
-provider "aws" {
-  region = "us-east-1"
-}
 
 # Incluir módulo para Lambda functions
 module "lambda" {
