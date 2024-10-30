@@ -16,14 +16,19 @@
 #  role = var.lambda_exec_role_arn
 #}
 
-
 provider "aws" {
   region = "us-east-1" # Cambia la región según tus necesidades
 }
 
 resource "aws_s3_bucket" "elcarioca_front" {
   bucket = "elcarioca-front"
-  acl    = "public-read"
+
+  # Configuración de Object Ownership para deshabilitar ACLs
+  ownership_controls {
+    rule {
+      object_ownership = "BucketOwnerEnforced"
+    }
+  }
 
   website {
     index_document = "index.html"
