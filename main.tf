@@ -282,6 +282,31 @@ resource "aws_s3_bucket_policy" "lambda_bucket_policy" {
   })
 }
 
+resource "aws_iam_policy" "lambda_vpc_access_policy" {
+  name        = "LambdaVpcAccessPolicy"
+  description = "Permite a Lambda crear interfaces de red en EC2"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_vpc_access_policy" {
+  policy_arn = aws_iam_policy.lambda_vpc_access_policy.arn
+  role       = aws_iam_role.lambda_exec_role.name
+}
+
 # -------------------------------------------------------------------------------
 # Añadidos al final: Función Lambda en Node.js
 # -------------------------------------------------------------------------------
