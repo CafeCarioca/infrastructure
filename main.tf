@@ -281,3 +281,23 @@ resource "aws_s3_bucket_policy" "lambda_bucket_policy" {
     ]
   })
 }
+
+# -------------------------------------------------------------------------------
+# Añadidos al final: Función Lambda en Node.js
+# -------------------------------------------------------------------------------
+
+resource "aws_lambda_function" "create_order" {
+  function_name = "create-order"
+  handler       = "index.handler"  # Cambia esto según tu archivo de entrada y función
+  runtime       = "nodejs20.x"   # Cambia este valor según la versión de Node.js que uses
+  s3_bucket     = aws_s3_bucket.lambda_bucket.id
+  s3_key        = "create-order.zip"
+  role          = aws_iam_role.lambda_exec_role.arn
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
+    security_group_ids = [aws_security_group.rds_sg.id]
+  }
+}
+
+# Fin de los añadidos para la función Lambda
