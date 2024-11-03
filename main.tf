@@ -34,6 +34,50 @@ resource "aws_iam_role" "lambda_exec_role" {
   })
 }
 
+# Política básica para ejecución de Lambda
+resource "aws_iam_policy" "lambda_basic_execution" {
+  name        = "LambdaBasicExecution"
+  description = "Permisos básicos para ejecutar funciones Lambda"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+        Resource = "arn:aws:s3:::carioca-lambda-code-bucket-${random_id.lambda_bucket.hex}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Adjuntar la política básica de ejecución al rol de Lambda
+resource "aws_iam_role_policy_attachment" "attach_lambda_basic_execution" {
+  policy_arn = aws_iam_policy.lambda_basic_execution.arn
+  role       = aws_iam_role.lambda_exec_role.name
+}
+
 # Política para permitir el acceso al bucket S3
 resource "aws_iam_policy" "s3_access_policy" {
   name        = "LambdaS3AccessPolicy"
@@ -325,4 +369,156 @@ resource "aws_lambda_function" "create_order" {
   }
 }
 
+resource "aws_lambda_function" "preference-id" {
+  function_name = "preference-id"
+  handler       = "index.handler"  # Cambia esto según tu archivo de entrada y función
+  runtime       = "nodejs20.x"   # Cambia este valor según la versión de Node.js que uses
+  s3_bucket     = aws_s3_bucket.lambda_bucket.id
+  s3_key        = "preference-id.zip"
+  role          = aws_iam_role.lambda_exec_role.arn
+
+  environment {
+    variables = {
+      MERCADOPAGO_ACCESS_TOKEN = "APP_USR-7203094653028388-101112-789555c02a457c562394a689a561ef61-446648853"
+    }
+  }
+}
+
+resource "aws_lambda_function" "get-orders" {
+  function_name = "get-order"
+  handler       = "index.handler"  # Cambia esto según tu archivo de entrada y función
+  runtime       = "nodejs20.x"   # Cambia este valor según la versión de Node.js que uses
+  s3_bucket     = aws_s3_bucket.lambda_bucket.id
+  s3_key        = "get-orders.zip"
+  role          = aws_iam_role.lambda_exec_role.arn
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
+    security_group_ids = [aws_security_group.rds_sg.id]
+  }
+}
 # Fin de los añadidos para la función Lambda
+
+# -------------------------------------------------------------------------------
+# Añadidos al final: Recursos de API Gateway
+# -------------------------------------------------------------------------------
+
+# API Gateway
+resource "aws_api_gateway_rest_api" "carioca_api" {
+  name        = "CariocaAPI"
+  description = "API Gateway para las funciones Lambda de Carioca"
+}
+
+# Recurso para create-order
+resource "aws_api_gateway_resource" "create_order_resource" {
+  rest_api_id = aws_api_gateway_rest_api.carioca_api.id
+  parent_id   = aws_api_gateway_rest_api.carioca_api.root_resource_id
+  path_part   = "create-order"
+}
+
+# Método POST para create-order
+resource "aws_api_gateway_method" "create_order_method" {
+  rest_api_id   = aws_api_gateway_rest_api.carioca_api.id
+  resource_id   = aws_api_gateway_resource.create_order_resource.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+# Integración Lambda para create-order
+resource "aws_api_gateway_integration" "create_order_integration" {
+  rest_api_id = aws_api_gateway_rest_api.carioca_api.id
+  resource_id = aws_api_gateway_resource.create_order_resource.id
+  http_method = aws_api_gateway_method.create_order_method.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.create_order.invoke_arn
+}
+
+# Permisos Lambda para create-order
+resource "aws_lambda_permission" "apigw_lambda_create_order" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_order.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.carioca_api.execution_arn}/*/*"
+}
+
+# Recurso para preference-id
+resource "aws_api_gateway_resource" "preference_id_resource" {
+  rest_api_id = aws_api_gateway_rest_api.carioca_api.id
+  parent_id   = aws_api_gateway_rest_api.carioca_api.root_resource_id
+  path_part   = "preference-id"
+}
+
+# Método GET para preference-id
+resource "aws_api_gateway_method" "preference_id_method" {
+  rest_api_id   = aws_api_gateway_rest_api.carioca_api.id
+  resource_id   = aws_api_gateway_resource.preference_id_resource.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+# Integración Lambda para preference-id
+resource "aws_api_gateway_integration" "preference_id_integration" {
+  rest_api_id = aws_api_gateway_rest_api.carioca_api.id
+  resource_id = aws_api_gateway_resource.preference_id_resource.id
+  http_method = aws_api_gateway_method.preference_id_method.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.preference-id.invoke_arn
+}
+
+# Permisos Lambda para preference-id
+resource "aws_lambda_permission" "apigw_lambda_preference_id" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.preference-id.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.carioca_api.execution_arn}/*/*"
+}
+
+# Recurso para get-orders
+resource "aws_api_gateway_resource" "get_orders_resource" {
+  rest_api_id = aws_api_gateway_rest_api.carioca_api.id
+  parent_id   = aws_api_gateway_rest_api.carioca_api.root_resource_id
+  path_part   = "get-orders"
+}
+
+# Método GET para get-orders
+resource "aws_api_gateway_method" "get_orders_method" {
+  rest_api_id   = aws_api_gateway_rest_api.carioca_api.id
+  resource_id   = aws_api_gateway_resource.get_orders_resource.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# Integración Lambda para get-orders
+resource "aws_api_gateway_integration" "get_orders_integration" {
+  rest_api_id = aws_api_gateway_rest_api.carioca_api.id
+  resource_id = aws_api_gateway_resource.get_orders_resource.id
+  http_method = aws_api_gateway_method.get_orders_method.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "GET"
+  uri         = aws_lambda_function.get-orders.invoke_arn
+}
+
+# Permisos Lambda para get-orders
+resource "aws_lambda_permission" "apigw_lambda_get_orders" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get-orders.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.carioca_api.execution_arn}/*/*"
+}
+
+# Implementación de API Gateway
+resource "aws_api_gateway_deployment" "carioca_api_deployment" {
+  depends_on = [
+    aws_api_gateway_integration.create_order_integration,
+    aws_api_gateway_integration.preference_id_integration,
+    aws_api_gateway_integration.get_orders_integration,
+  ]
+
+  rest_api_id = aws_api_gateway_rest_api.carioca_api.id
+  stage_name  = "prod"
+}
