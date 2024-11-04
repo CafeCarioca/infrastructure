@@ -108,11 +108,13 @@ resource "aws_iam_role_policy_attachment" "attach_s3_policy" {
 resource "aws_vpc" "my_vpc" {
   cidr_block = "10.0.0.0/16"
 
+  enable_dns_support = true
+  enable_dns_hostnames = true
+
   tags = {
     Name = "MyVPC"
   }
 }
-
 # Subnet--------------------------------------------------------------------------------
 resource "aws_subnet" "subnet_a" {
   vpc_id            = aws_vpc.my_vpc.id
@@ -141,7 +143,14 @@ resource "aws_security_group" "rds_sg" {
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["186.55.4.76/32"]
+  }
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    self = true
   }
 
   egress {
@@ -178,6 +187,9 @@ resource "aws_db_instance" "default" {
   multi_az                = false
   performance_insights_enabled = false
   monitoring_interval     = 0
+  publicly_accessible     = true
+
+  depends_on = [aws_internet_gateway.my_igw]
 }
 
 # Buckets de S3
@@ -385,7 +397,7 @@ resource "aws_lambda_function" "preference-id" {
 }
 
 resource "aws_lambda_function" "get-orders" {
-  function_name = "get-order"
+  function_name = "get-orders"
   handler       = "index.handler"  # Cambia esto según tu archivo de entrada y función
   runtime       = "nodejs20.x"   # Cambia este valor según la versión de Node.js que uses
   s3_bucket     = aws_s3_bucket.lambda_bucket.id
@@ -521,4 +533,38 @@ resource "aws_api_gateway_deployment" "carioca_api_deployment" {
 
   rest_api_id = aws_api_gateway_rest_api.carioca_api.id
   stage_name  = "prod"
+}
+
+# Crear un Internet Gateway
+resource "aws_internet_gateway" "my_igw" {
+  vpc_id = aws_vpc.my_vpc.id
+
+  tags = {
+    Name = "MyInternetGateway"
+  }
+}
+
+# Crear una tabla de rutas
+resource "aws_route_table" "my_route_table" {
+  vpc_id = aws_vpc.my_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.my_igw.id
+  }
+
+  tags = {
+    Name = "MyRouteTable"
+  }
+}
+
+# Asociar la tabla de rutas con las subredes
+resource "aws_route_table_association" "subnet_a_association" {
+  subnet_id      = aws_subnet.subnet_a.id
+  route_table_id = aws_route_table.my_route_table.id
+}
+
+resource "aws_route_table_association" "subnet_b_association" {
+  subnet_id      = aws_subnet.subnet_b.id
+  route_table_id = aws_route_table.my_route_table.id
 }
