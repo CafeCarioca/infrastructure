@@ -16,7 +16,10 @@ resource "random_id" "lambda_bucket" {
   byte_length = 4
 }
 
+# =======================================================================
 # Definir el rol IAM para Lambda
+# =======================================================================
+
 resource "aws_iam_role" "lambda_exec_role" {
   name = "LabRole"
 
@@ -33,6 +36,10 @@ resource "aws_iam_role" "lambda_exec_role" {
     ]
   })
 }
+
+# =======================================================================
+# Policies 
+# =======================================================================
 
 # Política básica para ejecución de Lambda
 resource "aws_iam_policy" "lambda_basic_execution" {
@@ -130,7 +137,10 @@ resource "aws_iam_role_policy_attachment" "attach_lambda_ses_policy" {
   role       = aws_iam_role.lambda_exec_role.name
 }
 
-# VPC--------------------------------------------------------------------------------
+# =======================================================================
+# VPC
+# =======================================================================
+
 resource "aws_vpc" "my_vpc" {
   cidr_block = "10.0.0.0/16"
 
@@ -191,7 +201,10 @@ resource "aws_security_group" "rds_sg" {
   }
 }
 
-# RDS--------------------------------------------------------------------------------
+# =======================================================================
+# RDS
+# =======================================================================
+
 resource "aws_db_subnet_group" "my_db_subnet_group" {
   name       = "my-db-subnet-group"
   subnet_ids = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
@@ -219,7 +232,10 @@ resource "aws_db_instance" "default" {
   depends_on = [aws_internet_gateway.my_igw]
 }
 
+# =======================================================================
 # Buckets de S3
+# =======================================================================
+
 # Bucket del frontend
 resource "aws_s3_bucket" "carioca_front" {
   bucket        = "carioca-front-bucket-${random_id.carioca_front_suffix.hex}"
@@ -390,14 +406,14 @@ resource "aws_iam_role_policy_attachment" "attach_vpc_access_policy" {
   role       = aws_iam_role.lambda_exec_role.name
 }
 
-# -------------------------------------------------------------------------------
-# Añadidos al final: Función Lambda en Node.js
-# -------------------------------------------------------------------------------
+# =======================================================================
+# Funciones Lambda en Node.js
+# =======================================================================
 
 resource "aws_lambda_function" "create_order" {
   function_name = "create-order"
-  handler       = "index.handler"  # Cambia esto según tu archivo de entrada y función
-  runtime       = "nodejs20.x"   # Cambia este valor según la versión de Node.js que uses
+  handler       = "index.handler"
+  runtime       = "nodejs20.x"   
   s3_bucket     = aws_s3_bucket.lambda_bucket.id
   s3_key        = "create-order.zip"
   role          = aws_iam_role.lambda_exec_role.arn
@@ -410,15 +426,15 @@ resource "aws_lambda_function" "create_order" {
 
 resource "aws_lambda_function" "send_order_email" {
   function_name = "send-order-email"
-  handler       = "index.handler"  # Ajusta según tu archivo de entrada
-  runtime       = "nodejs20.x"    # Ajusta según la versión que uses
+  handler       = "index.handler"
+  runtime       = "nodejs20.x"   
   s3_bucket     = aws_s3_bucket.lambda_bucket.id
   s3_key        = "send-order-email.zip"
   role          = aws_iam_role.lambda_exec_role.arn
 
   environment {
     variables = {
-      SES_REGION = "us-east-1"  # Asegúrate de que coincida con la región configurada para SES
+      SES_REGION = "us-east-1"  
     }
   }
 
@@ -430,8 +446,8 @@ resource "aws_lambda_function" "send_order_email" {
 
 resource "aws_lambda_function" "preference-id" {
   function_name = "preference-id"
-  handler       = "index.handler"  # Cambia esto según tu archivo de entrada y función
-  runtime       = "nodejs20.x"   # Cambia este valor según la versión de Node.js que uses
+  handler       = "index.handler"
+  runtime       = "nodejs20.x"   
   s3_bucket     = aws_s3_bucket.lambda_bucket.id
   s3_key        = "preference-id.zip"
   role          = aws_iam_role.lambda_exec_role.arn
@@ -445,8 +461,8 @@ resource "aws_lambda_function" "preference-id" {
 
 resource "aws_lambda_function" "get-orders" {
   function_name = "get-orders"
-  handler       = "index.handler"  # Cambia esto según tu archivo de entrada y función
-  runtime       = "nodejs20.x"   # Cambia este valor según la versión de Node.js que uses
+  handler       = "index.handler"
+  runtime       = "nodejs20.x"   
   s3_bucket     = aws_s3_bucket.lambda_bucket.id
   s3_key        = "get-orders.zip"
   role          = aws_iam_role.lambda_exec_role.arn
@@ -456,11 +472,10 @@ resource "aws_lambda_function" "get-orders" {
     security_group_ids = [aws_security_group.rds_sg.id]
   }
 }
-# Fin de los añadidos para la función Lambda
 
-# -------------------------------------------------------------------------------
-# Añadidos al final: Recursos de API Gateway
-# -------------------------------------------------------------------------------
+# =======================================================================
+# Recursos de API Gateway
+# # =======================================================================
 
 # API Gateway
 resource "aws_api_gateway_rest_api" "carioca_api" {
