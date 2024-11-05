@@ -104,6 +104,32 @@ resource "aws_iam_role_policy_attachment" "attach_s3_policy" {
   role       = aws_iam_role.lambda_exec_role.name
 }
 
+# Añadir política de SES
+resource "aws_iam_policy" "lambda_ses_policy" {
+  name        = "LambdaSESPolicy"
+  description = "Permite enviar correos electrónicos a través de SES"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Adjuntar la política de SES al rol de Lambda
+resource "aws_iam_role_policy_attachment" "attach_lambda_ses_policy" {
+  policy_arn = aws_iam_policy.lambda_ses_policy.arn
+  role       = aws_iam_role.lambda_exec_role.name
+}
+
 # VPC--------------------------------------------------------------------------------
 resource "aws_vpc" "my_vpc" {
   cidr_block = "10.0.0.0/16"
@@ -172,10 +198,10 @@ resource "aws_db_subnet_group" "my_db_subnet_group" {
 }
 
 resource "aws_db_instance" "default" {
-  allocated_storage       = 10
-  storage_type            = "standard"
+  allocated_storage       = 20
+  storage_type            = "gp3"
   engine                  = "mysql"
-  engine_version          = "5.7"
+  engine_version          = "8.0.39"
   instance_class          = "db.t3.micro"
   identifier              = "mydb"
   username                = "dbuser"
@@ -187,7 +213,8 @@ resource "aws_db_instance" "default" {
   multi_az                = false
   performance_insights_enabled = false
   monitoring_interval     = 0
-  publicly_accessible     = true
+  publicly_accessible     = false
+  allow_major_version_upgrade = true 
 
   depends_on = [aws_internet_gateway.my_igw]
 }
@@ -381,6 +408,26 @@ resource "aws_lambda_function" "create_order" {
   }
 }
 
+resource "aws_lambda_function" "send_order_email" {
+  function_name = "send-order-email"
+  handler       = "index.handler"  # Ajusta según tu archivo de entrada
+  runtime       = "nodejs20.x"    # Ajusta según la versión que uses
+  s3_bucket     = aws_s3_bucket.lambda_bucket.id
+  s3_key        = "send-order-email.zip"
+  role          = aws_iam_role.lambda_exec_role.arn
+
+  environment {
+    variables = {
+      SES_REGION = "us-east-1"  # Asegúrate de que coincida con la región configurada para SES
+    }
+  }
+
+   vpc_config {
+    subnet_ids         = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
+    security_group_ids = [aws_security_group.rds_sg.id]
+  }
+}
+
 resource "aws_lambda_function" "preference-id" {
   function_name = "preference-id"
   handler       = "index.handler"  # Cambia esto según tu archivo de entrada y función
@@ -419,6 +466,10 @@ resource "aws_lambda_function" "get-orders" {
 resource "aws_api_gateway_rest_api" "carioca_api" {
   name        = "CariocaAPI"
   description = "API Gateway para las funciones Lambda de Carioca"
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
 }
 
 # Recurso para create-order
@@ -510,7 +561,7 @@ resource "aws_api_gateway_integration" "get_orders_integration" {
   resource_id = aws_api_gateway_resource.get_orders_resource.id
   http_method = aws_api_gateway_method.get_orders_method.http_method
   type        = "AWS_PROXY"
-  integration_http_method = "GET"
+  integration_http_method = "POST"
   uri         = aws_lambda_function.get-orders.invoke_arn
 }
 
@@ -534,6 +585,8 @@ resource "aws_api_gateway_deployment" "carioca_api_deployment" {
   rest_api_id = aws_api_gateway_rest_api.carioca_api.id
   stage_name  = "prod"
 }
+
+
 
 # Crear un Internet Gateway
 resource "aws_internet_gateway" "my_igw" {
