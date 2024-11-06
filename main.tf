@@ -74,7 +74,15 @@ resource "aws_iam_policy" "lambda_basic_execution" {
           "ec2:DeleteNetworkInterface"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction"
+        ]
+        Resource = "*"
       }
+      
     ]
   })
 }
@@ -185,6 +193,27 @@ resource "aws_security_group" "rds_sg" {
   ingress {
     from_port   = 3306
     to_port     = 3306
+    protocol    = "tcp"
+    self = true
+  }
+
+  ingress {
+    from_port   = 25
+    to_port     = 25
+    protocol    = "tcp"
+    self = true
+  }
+
+   ingress {
+    from_port   = 465
+    to_port     = 465
+    protocol    = "tcp"
+    self = true
+  }
+
+   ingress {
+    from_port   = 587
+    to_port     = 587
     protocol    = "tcp"
     self = true
   }
@@ -422,25 +451,16 @@ resource "aws_lambda_function" "create_order" {
     subnet_ids         = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
     security_group_ids = [aws_security_group.rds_sg.id]
   }
-}
-
-resource "aws_lambda_function" "send_order_email" {
-  function_name = "send-order-email"
-  handler       = "index.handler"
-  runtime       = "nodejs20.x"   
-  s3_bucket     = aws_s3_bucket.lambda_bucket.id
-  s3_key        = "send-order-email.zip"
-  role          = aws_iam_role.lambda_exec_role.arn
 
   environment {
     variables = {
-      SES_REGION = "us-east-1"  
+      SES_SMTP_PASSWORD = "BJy/q4ndvQ3CutNHrHNe31mYJ9bdL/ANc1jIxzgh7cct"
+      SES_SMTP_USER = "AKIAX2DZESFIMTMGAONT"
+      DB_HOST     = aws_db_instance.default.endpoint
+      DB_USER     = aws_db_instance.default.username
+      DB_PASSWORD = aws_db_instance.default.password
+      DB_NAME     = "cariocaecommerce"
     }
-  }
-
-   vpc_config {
-    subnet_ids         = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
-    security_group_ids = [aws_security_group.rds_sg.id]
   }
 }
 
@@ -470,6 +490,15 @@ resource "aws_lambda_function" "get-orders" {
   vpc_config {
     subnet_ids         = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
     security_group_ids = [aws_security_group.rds_sg.id]
+  }
+
+  environment {
+    variables = {
+      DB_HOST     = aws_db_instance.default.endpoint
+      DB_USER     = aws_db_instance.default.username
+      DB_PASSWORD = aws_db_instance.default.password
+      DB_NAME     = "cariocaecommerce"
+    }
   }
 }
 
@@ -635,4 +664,17 @@ resource "aws_route_table_association" "subnet_a_association" {
 resource "aws_route_table_association" "subnet_b_association" {
   subnet_id      = aws_subnet.subnet_b.id
   route_table_id = aws_route_table.my_route_table.id
+}
+
+resource "aws_vpc_endpoint" "ses_endpoint" {
+  vpc_id            = aws_vpc.my_vpc.id
+  service_name      = "com.amazonaws.us-east-1.email-smtp" # Cambia esto si tu región es diferente
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
+
+  security_group_ids = [aws_security_group.rds_sg.id] # Asegúrate de que el SG permita el tráfico necesario
+
+  tags = {
+    Name = "SESVPCEndpoint"
+  }
 }
